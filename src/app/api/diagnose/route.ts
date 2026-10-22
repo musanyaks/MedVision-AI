@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { diagnoses } from "@/db/schema";
 import { predict, generateOcclusionHeatmap } from "@/lib/onnx-model";
 
+export const maxDuration = 60;
+
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
