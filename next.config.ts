@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/diagnose": [
       "./public/model/**/*",
-      "./node_modules/onnxruntime-node/bin/napi-v6/linux/x64/**/*",
+      "./node_modules/onnxruntime-node/**/*",
+      "./node_modules/onnxruntime-common/**/*",
     ],
   },
   outputFileTracingExcludes: {
