@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { Upload, Loader2, Stethoscope } from "lucide-react";
 import type { DiagnosisResultData } from "./DiagnosisResult";
+import { compressImage } from "@/lib/compressImage";
 
 interface DiagnoseFormProps {
   onResult: (result: DiagnosisResultData) => void;
@@ -46,17 +47,36 @@ export function DiagnoseForm({ onResult, onLoading }: DiagnoseFormProps) {
     setLoading(true);
     onLoading(true);
 
-    const form = new FormData();
-    form.append("file", file);
-    if (patientName) form.append("patientName", patientName);
-    if (patientId) form.append("patientId", patientId);
-    if (notes) form.append("notes", notes);
-
     try {
+      // Shrink the image first so the upload stays under Vercel's 4.5 MB limit
+      const compressed = await compressImage(file);
+
+      const form = new FormData();
+      form.append("file", compressed);
+      if (patientName) form.append("patientName", patientName);
+      if (patientId) form.append("patientId", patientId);
+      if (notes) form.append("notes", notes);
+
       const res = await fetch("/api/diagnose", { method: "POST", body: form });
-      const raw = await res.json();
-      if (!res.ok) throw new Error(raw.error || "Diagnosis failed");
-      onResult(raw as DiagnosisResultData);
+      const text = await res.text();
+
+      let data: unknown = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // Non-JSON reply (e.g. a platform error page)
+      }
+
+      if (!res.ok) {
+        const apiError =
+          data && typeof data === "object" && "error" in data
+            ? String((data as { error: unknown }).error)
+            : null;
+        throw new Error(apiError || `Request failed (${res.status}): ${text.slice(0, 200)}`);
+      }
+
+      if (!data) throw new Error("Server returned an invalid response");
+      onResult(data as DiagnosisResultData);
     } catch (err) {
       alert((err as Error).message);
     } finally {
